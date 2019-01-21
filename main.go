@@ -18,6 +18,8 @@ type (
 	Room struct {
 		group *nano.Group
 		timer *nano.Timer
+		Status uint8
+
 	}
 
 	// RoomManager represents a component that contains a bundle of room
