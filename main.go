@@ -8,6 +8,7 @@ import (
 	"net/http"
 )
 
+var RoomMgr *RoomManager
 func main() {
 
 	// rewrite component and handler Name
@@ -15,6 +16,10 @@ func main() {
 	nano.Register(roomMgr,
 		component.WithName("roomMgr"),
 	)
+	roomHandlers := &RoomHandlers{}
+	nano.Register(roomHandlers,
+		component.WithName("roomHandlers"),
+		)
 	// override default serializer
 	nano.SetSerializer(json.NewSerializer())
 	// Init
@@ -26,6 +31,8 @@ func main() {
 			return nil, false
 		}
 	}
+	RoomMgr = roomMgr
+
 	// 开启匹配协程
 	go MatchGro(roomMgr)
 	// traffic stats
@@ -40,6 +47,6 @@ func main() {
 
 	http.Handle("/web/", http.StripPrefix("/web/", http.FileServer(http.Dir("web"))))
 
-	nano.SetCheckOriginFunc(func(_ *http.Request) bool { return true })
+	//nano.SetCheckOriginFunc(func(_ *http.Request) bool { return true })
 	nano.ListenWS(":3250", nano.WithPipeline(pipeline))
 }

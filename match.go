@@ -15,7 +15,7 @@ func MatchGro(mgr *RoomManager){
 			fmt.Println("====match Id:", id)
 			matchSlice = append(matchSlice, id)
 		case <- matchTime:
-			fmt.Println("====matchTime")
+		//	fmt.Println("====matchTime")
 			doMatch(mgr, matchSlice)
 			if len(matchSlice) % 2 == 0{
 				matchSlice = []int64{}

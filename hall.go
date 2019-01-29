@@ -5,6 +5,7 @@ import (
 	"github.com/lonng/nano"
 	"github.com/lonng/nano/component"
 	"github.com/lonng/nano/session"
+	"reflect"
 	"log"
 	"math/rand"
 	"time"
@@ -23,12 +24,22 @@ type (
 		roomIDSeed int64
 	}
 
-	// UserMessage represents a message that user sent
-	UserMessage struct {
-		Name    string `json:"Name"`
+	// 提示消息
+	NoticeMessage struct {
+		Type    int `json:"type"`
 		Content string `json:"content"`
 	}
 
+	HallMessage struct {
+		Type    int `json:"type"`
+		Content string `json:"content"`
+		Data interface{} `json:"data"`
+	}
+
+	GameMessage struct {
+		Type    int `json:"type"`
+		Content string `json:"content"`
+	}
 	// NewUser message will be received when new user join room
 	NewUser struct {
 		Content string `json:"content"`
@@ -109,7 +120,7 @@ func (mgr *RoomManager) Login(s *session.Session, msg []byte) error {
 	}()
 	// @todo 检查断线重连
 
-	fmt.Println("login===:", string(msg))
+	fmt.Println("login===:", s.UID())
 	id := int64(len(mgr.Members) + 1) // @todo 假的用户Id
 
 	role := &Role{id, "testName", "testIcon", 1, 100, 0, s}
@@ -128,12 +139,18 @@ func (mgr *RoomManager) Login(s *session.Session, msg []byte) error {
 
 // 开始匹配
 func (mgr *RoomManager) StartMatch(s *session.Session, msg []byte) error {
-	mgr.MatchChannel <- s.UID()
+	if ok := CheckLogin(s); ok{
+		mgr.MatchChannel <- s.UID()
+	}
 	return nil
 }
 
 // 大厅操作
-func (mgr *RoomManager) Hall(s *session.Session, msg *UserMessage) error {
+func (mgr *RoomManager) Hall(s *session.Session, msg *HallMessage) error {
+	fmt.Println("======Msg:", reflect.TypeOf(msg.Data))
+	if ok := CheckLogin(s); !ok{
+		return nil
+	}
 	if !s.HasKey(roomIDKey) {
 		return fmt.Errorf("not join room yet")
 	}
@@ -142,6 +159,10 @@ func (mgr *RoomManager) Hall(s *session.Session, msg *UserMessage) error {
 }
 
 // 游戏房间操作
-func (mgr *RoomManager) GameRoom(s *session.Session, msg *UserMessage) error {
+func (mgr *RoomManager) GameRoom(s *session.Session, msg *GameMessage) error {
+	if ok := CheckLogin(s); !ok{
+		return nil
+	}
+
 	return nil
 }
