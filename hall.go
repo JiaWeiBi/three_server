@@ -123,7 +123,7 @@ func (mgr *RoomManager) Login(s *session.Session, msg []byte) error {
 	fmt.Println("login===:", s.UID())
 	id := int64(len(mgr.Members) + 1) // @todo 假的用户Id
 
-	role := &Role{id, "testName", "testIcon", 1, 100, 0, s}
+	role := &Role{id, `名字名字名字...`, "http://thirdwx.qlogo.cn/mmopen/g3MonUZtNHkdmzicIlibx6iaFqAc56vxLSUfpb6n5WKSYVY0ChQKkiaJSgQ1dZuTOgvLLrhJbERQQ4eMsv84eavHiaiceqxibJxCfHe/46", int(id), id, 0, s}
 	mgr.Members[id] = role
 	err := s.Bind(id)
 	if err != nil {

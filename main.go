@@ -48,5 +48,5 @@ func main() {
 	http.Handle("/web/", http.StripPrefix("/web/", http.FileServer(http.Dir("web"))))
 
 	//nano.SetCheckOriginFunc(func(_ *http.Request) bool { return true })
-	nano.ListenWS(":3250", nano.WithPipeline(pipeline))
+	nano.ListenWS(":5000", nano.WithPipeline(pipeline))
 }
