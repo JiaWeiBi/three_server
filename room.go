@@ -19,10 +19,16 @@ type (
 		Group *nano.Group
 		Timer *nano.Timer
 		Woner uint8 // 1:fPlayer 2:sPlayer
+		// 房间类型 0:普通匹配 1:好友赛 2;段位赛
+		Type int
 		// 房间状态
 		//0:双方未准备 1:1号准备 2:2号准备
 		// 11:FPlayer下子 12:FPlayer走子 13:FPlayer揪子 21:SPlayer下子 22:SPlayer走子 23:SPlayer揪子
 		Status uint8
+		// 倍率
+		Magnification int
+		// 求和人 0：没有人求和 1:一号求和 2:二号求和
+		SuePeace int
 		// 棋盘表 0:为空 1：FPlayer棋子 2：SPlayer棋子 3：揪过棋子
 		PointMap map[Point]int
 
@@ -35,20 +41,36 @@ type (
 		StepList []*Step
 		ChessNum int // 总共的下子数量，揪子不减少
 		// 超时次数 连续第三次超时判定为输
-		FTimeOutTime int
-		STimeOutTime int
+		// 状态开始的时间戳
+		ActionTime int64
 	}
 
 	// 房间信息 用于推送
 	CastRoomInfo struct {
-		Woner         uint8          `json:"woner"`
-		Status        uint8          `json:"status"`
-		PointMap      map[string]int `json:"pointmap"`
-		Flag          int            `json:"flag"`
-		FPlayer       *CastRole      `json:"fplayer"`
-		SPlayer       *CastRole      `json:"splayer"`
-		FPlayerHelper *CastRole      `json:"fhelper"`
-		SPlayerHelper *CastRole      `json:"shelper"`
+		Id int64 `json:"id"`
+		// 房间状态
+		//0:双方未准备 1:1号准备 2:2号准备
+		// 11:FPlayer下子 12:FPlayer走子 13:FPlayer揪子 21:SPlayer下子 22:SPlayer走子 23:SPlayer揪子
+		Status   uint8          `json:"status"`
+		PointMap map[string]int `json:"pointmap"`
+		// 房间类型 0:普通匹配 1:好友赛 2;段位赛
+		Type int `json:"type"`
+		// 倍率
+		Magnification int `json:"mag"`
+		// 求和人 0：没有人求和 1:一号求和 2:二号求和
+		SuePeace   int   `json:"peace"`
+		ActionTime int64 `json:"actiontime"`
+
+		FPlayer       *CastRole `json:"fplayer"`
+		SPlayer       *CastRole `json:"splayer"`
+		FPlayerHelper *CastRole `json:"fhelper"`
+		SPlayerHelper *CastRole `json:"shelper"`
+	}
+
+	// 房间状态广播
+	StatusChange struct {
+		Status    uint8 `json:"status"`
+		StartTime int64 `json:"starttime"`
 	}
 
 	Point struct {
@@ -65,7 +87,11 @@ type (
 
 	// 结算信息
 	SettleMsg struct {
-		Winner int `json:"winner"`
+		Winner    int `json:"winner"`
+		WinGold   int `json:"wingold"`
+		WinScore  int `json:"winscore"`
+		LossGold  int `json:"lossgold"`
+		LossScore int `json:"lossscore"`
 	}
 )
 
@@ -119,8 +145,7 @@ func init() {
 
 		C3CheckMap[p] = [][]Point{testFun(XSlice, p), testFun(YSlice, p)}
 	}
-	fmt.Println("Init======")
-	fmt.Println(C3CheckMap)
+
 	borderFun := func(p1 *Point, p2 *Point) bool {
 		//校验是否相邻
 		if p1.X == 0 {
@@ -164,6 +189,7 @@ func NewRoom(roomId int64) *Room {
 	room.Status = 0
 
 	room.Woner = 1
+	room.Magnification = 1
 	room.PointMap = make(map[Point]int)
 	for _, p := range Points {
 		room.PointMap[p] = 0
@@ -174,16 +200,27 @@ func NewRoom(roomId int64) *Room {
 }
 
 // 房间初始化
-func (room *Room) Init() {
-	fmt.Println("房间初始化,Id:", room.Id)
+func (room *Room) Init(t int) {
+	switch t {
+	case 0: //普通匹配
+		fRole, _ := GetRoleById(room.FPlayer)
+		sRole, _ := GetRoleById(room.SPlayer)
+		fRole.roomId = room.Id
+		sRole.roomId = room.Id
 
-	fRole, _ := GetRoleById(room.FPlayer)
-	sRole, _ := GetRoleById(room.SPlayer)
-	fRole.roomId = room.Id
-	sRole.roomId = room.Id
-	log.Println(*fRole.session, *sRole.session)
-	room.Join(fRole.session, false)
-	room.Join(sRole.session, false)
+		room.Join(fRole.session, false)
+		room.Join(sRole.session, false)
+		break
+	case 1: //好友战
+		fRole, _ := GetRoleById(room.FPlayer)
+
+		fRole.roomId = room.Id
+
+		room.Join(fRole.session, false)
+		break
+	case 2: // 段位赛
+		break
+	}
 }
 
 func (p *Point) ToString() string {
@@ -217,23 +254,24 @@ func (room *Room) Join(s *session.Session, cast bool) (bool, string) {
 // 获取房间信息
 func (room *Room) getCastRoomInfo() *CastRoomInfo {
 	info := &CastRoomInfo{}
-	info.Woner = room.Woner
 	info.Status = room.Status
+	info.Id = room.Id
+	info.Type = room.Type
+	info.Magnification = room.Magnification
+	info.SuePeace = room.SuePeace
+	info.ActionTime = room.ActionTime
 
-	if room.FPlayer > 0 {
-		fp, _ := GetRoleById(room.FPlayer)
+	if fp, ok := GetRoleById(room.FPlayer); ok {
 		info.FPlayer = FormatCastRole(fp)
 	}
-	if room.FPlayerHelper > 0 {
-		fph, _ := GetRoleById(room.FPlayerHelper)
+	if fph, ok := GetRoleById(room.FPlayerHelper); ok {
+
 		info.FPlayerHelper = FormatCastRole(fph)
 	}
-	if room.SPlayer > 0 {
-		sp, _ := GetRoleById(room.SPlayer)
+	if sp, ok := GetRoleById(room.SPlayer); ok {
 		info.SPlayer = FormatCastRole(sp)
 	}
-	if room.SPlayerHelper > 0 {
-		sph, _ := GetRoleById(room.SPlayerHelper)
+	if sph, ok := GetRoleById(room.SPlayerHelper); ok {
 		info.SPlayerHelper = FormatCastRole(sph)
 	}
 	info.PointMap = map[string]int{}
@@ -247,8 +285,6 @@ func (room *Room) getCastRoomInfo() *CastRoomInfo {
 func (room *Room) Start() {
 	// 数据初始化
 
-	// 设置超时计时器
-	room.Timer = nano.NewTimer(10*time.Second, room.TimeOut)
 	// 一号玩家开始下子
 	room.ChangeStatus(11)
 }
@@ -390,30 +426,79 @@ func (room *Room) CheckWin() bool {
 		break
 	}
 	// @todo 输赢处理
-	switch Winner {
-	case 1:
-		break
-	case 2:
-		break
-	default:
+	if Winner == 0 {
 		return false
 	}
-	settle := &SettleMsg{Winner: Winner}
-	room.Group.Broadcast("onSettle", settle)
+	room.Settle(Winner)
+
 	return true
+}
+
+// @todo 结算积分
+func (room *Room) Settle(winner int) *SettleMsg {
+	res := &SettleMsg{Winner: winner}
+	res.LossGold = 20 * room.Magnification
+	res.WinGold = 15 * room.Magnification
+	if room.Type == 2 {
+
+	}
+	switch winner {
+	case 1:
+		role1, _ := GetRoleById(room.FPlayer)
+		role1.AddGold(res.WinGold)
+		role2, _ := GetRoleById(room.SPlayer)
+		role2.AddGold(res.LossGold)
+		break
+	case 2:
+		role1, _ := GetRoleById(room.SPlayer)
+		role1.AddGold(res.WinGold)
+		role2, _ := GetRoleById(room.FPlayer)
+		role2.AddGold(res.LossGold)
+		break
+	}
+	// 停止超时计时器
+	room.Timer.Stop()
+	room.Group.Broadcast("onSettle", res)
+	room.ChangeStatus(0)
+	return res
 }
 
 //@todo  超时处理
 func (room *Room) TimeOut() {
-	log.Println("=====timeout======")
+	if room.Status > 10 {
+		// 如果步骤超时当认输处理
+		var winner int
+		if room.Status/10 == 1 {
+			winner = 2
+		} else {
+			winner = 1
+		}
+		room.Settle(winner)
+
+	} else {
+		room.Timer.Stop()
+		room.Timer = nil
+	}
 }
 
 // 房间状态修改并广播
 func (room *Room) ChangeStatus(s uint8) {
 	room.Status = s
-	room.Group.Broadcast("onStatus", room.Status)
+	now := time.Now().Unix()
+	room.ActionTime = now
+	room.Group.Broadcast("onStatus", &StatusChange{room.Status, room.ActionTime})
 	if room.Status%10 == 2 {
 		room.CheckWin()
+	}
+	if s > 10 {
+		if room.Timer == nil {
+			// 设置超时计时器
+			room.Timer = nano.NewAfterTimer(1*time.Minute, room.TimeOut)
+		} else {
+			room.Timer.Stop()
+			// 设置超时计时器
+			room.Timer = nano.NewAfterTimer(1*time.Minute, room.TimeOut)
+		}
 	}
 }
 
@@ -704,6 +789,120 @@ func (self *RoomHandlers) Move(s *session.Session, step *Step) error {
 	room.StepList = append(room.StepList, step)
 	room.CastStep(step)
 	return nil
+}
+
+// 求和
+func (self *RoomHandlers) SuePeace(s *session.Session, msg struct{ Code int }) error {
+	if ok := CheckLogin(s); !ok {
+		return nil
+	}
+	defer self.recover(s, "求和")
+	role, _ := GetRoleById(s.UID())
+	if room, ok := RoomMgr.Rooms[role.roomId]; ok && room.Status > 10 && room.SuePeace == 0 && msg.Code == 1 {
+		if room.SPlayer == role.id {
+			room.SuePeace = 2
+			FP, _ := GetRoleById(room.FPlayer)
+			FP.session.Push("suePeace", msg)
+		} else if room.FPlayer == role.id {
+			room.SuePeace = 1
+			SP, _ := GetRoleById(room.SPlayer)
+			SP.session.Push("suePeace", msg)
+		}
+	} else if room, ok := RoomMgr.Rooms[role.roomId]; ok && room.Status > 10 && room.SuePeace != 0 && msg.Code == 0 {
+		// 取消求和
+		if room.SPlayer == role.id && room.SuePeace == 2 {
+			room.SuePeace = 0
+			FP, _ := GetRoleById(room.FPlayer)
+			FP.session.Push("cancelSuePeace", msg)
+		} else if room.FPlayer == role.id && room.SuePeace == 1 {
+			room.SuePeace = 0
+			SP, _ := GetRoleById(room.SPlayer)
+			SP.session.Push("cancelSuePeace", msg)
+		}
+	} else {
+		//
+		// \s.Response("fail")
+	}
+	return nil
+}
+
+// 回应求和
+func (self *RoomHandlers) ResSuePeace(s *session.Session, msg struct{ Code int }) error {
+	if ok := CheckLogin(s); !ok {
+		return nil
+	}
+	defer self.recover(s, "回应求和")
+	role, _ := GetRoleById(s.UID())
+	if room, ok := RoomMgr.Rooms[role.roomId]; ok && room.Status > 10 {
+		if (room.SPlayer == role.id && room.SuePeace == 1) || (room.FPlayer == role.id && room.SuePeace == 2) {
+			switch msg.Code {
+			case 0: // 拒绝
+				room.SuePeace = 0
+				break
+			default: // 同意
+				break
+			}
+		} else {
+			//s.Response("fail")
+		}
+	}
+	return nil
+}
+
+// 退出房间
+func (self *RoomHandlers) Quit(s *session.Session, msg []byte) error {
+	if ok := CheckLogin(s); !ok {
+		return nil
+	}
+	defer self.recover(s, "退出房间")
+	role, _ := GetRoleById(s.UID())
+	if room, ok := RoomMgr.Rooms[role.roomId]; ok && room.Status < 10 {
+		if role.IsReady() {
+			s.Response("fail")
+		}
+		// @todo 退出处理
+		switch room.Type {
+		case 0: // 普通匹配
+			if role.id == room.FPlayer {
+				role2, _ := GetRoleById(room.SPlayer)
+				msg := HallMatchMessage{0}
+				role2.session.Push("onStartMatch", msg)
+				role2.roomId = 0
+				delete(RoomMgr.Rooms, room.Id)
+			} else if role.id == room.SPlayer {
+				role2, _ := GetRoleById(room.FPlayer)
+				msg := HallMatchMessage{0}
+				role2.session.Push("onStartMatch", msg)
+				role2.roomId = 0
+				delete(RoomMgr.Rooms, room.Id)
+			}
+			break
+		case 1: // 好友赛
+			if room.FPlayer == 0 || room.SPlayer == 0{
+				delete(RoomMgr.Rooms, room.Id)
+			}else{
+				if role.id == room.FPlayer {
+					role2, _ := GetRoleById(room.SPlayer)
+					msg := HallMatchMessage{1}
+					role2.session.Push("onReMatch", msg)
+					role2.roomId = 0
+					room.FPlayer = 0
+				} else if role.id == room.SPlayer {
+					role2, _ := GetRoleById(room.FPlayer)
+					msg := HallMatchMessage{1}
+					role2.session.Push("onReMatch", msg)
+					role2.roomId = 0
+					room.SPlayer = 0
+				}
+			}
+			break
+		case 2: // 段位赛
+			break
+		}
+		role.roomId = 0
+		return s.Response("ok")
+	}
+	return s.Response("fail")
 }
 
 func (self *RoomHandlers) recover(s *session.Session, msg interface{}) {

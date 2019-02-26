@@ -10,7 +10,9 @@ import (
 
 var RoomMgr *RoomManager
 func main() {
-
+	defer func() {
+		DBExit()
+	}()
 	// rewrite component and handler Name
 	roomMgr := NewRoomManager()
 	nano.Register(roomMgr,
@@ -23,14 +25,6 @@ func main() {
 	// override default serializer
 	nano.SetSerializer(json.NewSerializer())
 	// Init
-	GetRoleById = func(id int64) (*Role, bool) {
-		role, ok := roomMgr.Members[id]
-		if ok {
-			return role, true
-		} else {
-			return nil, false
-		}
-	}
 	RoomMgr = roomMgr
 
 	// 开启匹配协程
