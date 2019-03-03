@@ -229,25 +229,24 @@ func (p *Point) ToString() string {
 
 // cast: 是否通知房间内的其他玩家
 func (room *Room) Join(s *session.Session, cast bool) (bool, string) {
-	//s.Set(roomIDKey, room)
-	// @todo 推送房间信息
-	err := s.Push("onRoomInfo", room.getCastRoomInfo())
-	if err != nil {
-		return false, "推送房间信息失败"
+	if s != nil {
+		err := s.Push("onRoomInfo", room.getCastRoomInfo())
+		if err != nil {
+			return false, "推送房间信息失败"
+		}
+		err = room.Group.Add(s) // add session to group
+		if err != nil {
+			return false, "加入房间分组失败"
+		}
 	}
 	// notify others
 	if cast {
-		err = room.Group.Broadcast("onNewUser", &NewUser{Content: fmt.Sprintf("New user: %d", s.ID())})
+		err := room.Group.Broadcast("onNewUser", &NewUser{Content: fmt.Sprintf("New user: %d", s.ID())})
 		if err != nil {
 			log.Panicln("通知房间内其他玩家失败", err)
 		}
 	}
 
-	// new user join group
-	err = room.Group.Add(s) // add session to group
-	if err != nil {
-		return false, "加入房间分组失败"
-	}
 	return true, ""
 }
 
@@ -560,10 +559,10 @@ func (self *RoomHandlers) Ready(s *session.Session, msg []byte) error {
 		}
 		break
 	default:
-		Response(s,"fail")
+		Response(s, "fail")
 		return nil
 	}
-	Response(s,"ok")
+	Response(s, "ok")
 	return nil
 }
 func (self *RoomHandlers) CancleReady(s *session.Session, msg []byte) error {
@@ -582,17 +581,17 @@ func (self *RoomHandlers) CancleReady(s *session.Session, msg []byte) error {
 	case 1:
 		if room.FPlayer == uid {
 			room.ChangeStatus(0)
-			Response(s,"ok")
+			Response(s, "ok")
 		}
 		return nil
 	case 2:
 		if room.SPlayer == uid {
 			room.ChangeStatus(0)
-			Response(s,"ok")
+			Response(s, "ok")
 		}
 		return nil
 	}
-	Response(s,"fail")
+	Response(s, "fail")
 	return nil
 }
 
@@ -613,7 +612,7 @@ func (self *RoomHandlers) Put(s *session.Session, p *Point) error {
 	case 11:
 		// 一号玩家落子
 		if room.FPlayer != uid {
-			Response(s,"fail")
+			Response(s, "fail")
 			return nil
 		}
 		if room.PointMap[*p] != 0 {
@@ -633,12 +632,12 @@ func (self *RoomHandlers) Put(s *session.Session, p *Point) error {
 				room.ChangeStatus(21)
 			}
 		}
-		Response(s,"ok")
+		Response(s, "ok")
 		break
 	case 21:
 		// 二号玩家落子
 		if room.SPlayer != uid {
-			Response(s,"fail")
+			Response(s, "fail")
 			return nil
 		}
 		if room.PointMap[*p] != 0 {
@@ -658,10 +657,10 @@ func (self *RoomHandlers) Put(s *session.Session, p *Point) error {
 				room.ChangeStatus(11)
 			}
 		}
-		Response(s,"ok")
+		Response(s, "ok")
 		break
 	default:
-		Response(s,"fail")
+		Response(s, "fail")
 		return nil
 	}
 	// 广播
@@ -692,7 +691,7 @@ func (self *RoomHandlers) Take(s *session.Session, p *Point) error {
 	switch room.Status {
 	case 13:
 		if room.FPlayer != uid {
-			Response(s,"fail")
+			Response(s, "fail")
 			return nil
 		}
 		if !room.CheckTake(p) {
@@ -714,11 +713,11 @@ func (self *RoomHandlers) Take(s *session.Session, p *Point) error {
 		} else {
 			room.ChangeStatus(21)
 		}
-		Response(s,"ok")
+		Response(s, "ok")
 		break
 	case 23:
 		if room.SPlayer != uid {
-			Response(s,"fail")
+			Response(s, "fail")
 			return nil
 		}
 		if !room.CheckTake(p) {
@@ -740,7 +739,7 @@ func (self *RoomHandlers) Take(s *session.Session, p *Point) error {
 		} else {
 			room.ChangeStatus(11)
 		}
-		Response(s,"ok")
+		Response(s, "ok")
 		break
 	}
 	return nil
@@ -774,7 +773,7 @@ func (self *RoomHandlers) Move(s *session.Session, step *Step) error {
 		} else {
 			room.ChangeStatus(22)
 		}
-		Response(s,"ok")
+		Response(s, "ok")
 		break
 	case 22:
 		if !room.CheckMove(step) {
@@ -789,7 +788,7 @@ func (self *RoomHandlers) Move(s *session.Session, step *Step) error {
 		} else {
 			room.ChangeStatus(12)
 		}
-		Response(s,"ok")
+		Response(s, "ok")
 		break
 	default:
 		role.Push("notice", `错误状态:${room.Status}`)
@@ -808,11 +807,11 @@ func (self *RoomHandlers) Fail(s *session.Session, msg []byte) error {
 	}
 	defer self.recover(s, "认输")
 	role, _ := GetRoleById(s.UID())
-	if room, ok := RoomMgr.Rooms[role.roomId]; ok && room.Status > 10{
+	if room, ok := RoomMgr.Rooms[role.roomId]; ok && room.Status > 10 {
 		var winner int
-		if role.id == room.FPlayer{
+		if role.id == room.FPlayer {
 			winner = 2
-		}else{
+		} else {
 			winner = 1
 		}
 		room.Settle(winner)
@@ -887,7 +886,7 @@ func (self *RoomHandlers) Quit(s *session.Session, msg []byte) error {
 	role, _ := GetRoleById(s.UID())
 	if room, ok := RoomMgr.Rooms[role.roomId]; ok && room.Status < 10 {
 		if role.IsReady() {
-			Response(s,"fail")
+			Response(s, "fail")
 		}
 		// @todo 退出处理
 		switch room.Type {
@@ -914,7 +913,7 @@ func (self *RoomHandlers) Quit(s *session.Session, msg []byte) error {
 				room.SPlayer = 0
 			}
 			room.Cast("onRoleQuit", f)
-			if room.FPlayer == 0 && room.SPlayer == 0{
+			if room.FPlayer == 0 && room.SPlayer == 0 {
 				room.Cast("onRoomDestroy", room.Type)
 				delete(RoomMgr.Rooms, room.Id)
 			}
@@ -923,9 +922,9 @@ func (self *RoomHandlers) Quit(s *session.Session, msg []byte) error {
 			break
 		}
 		role.roomId = 0
-		Response(s,"ok")
+		Response(s, "ok")
 	}
-	Response(s,"fail")
+	Response(s, "fail")
 	return nil
 }
 
@@ -933,6 +932,6 @@ func (self *RoomHandlers) recover(s *session.Session, msg interface{}) {
 	if err := recover(); err != nil {
 		log.Println(err, msg)
 		s.Push("notice", msg)
-		Response(s,err)
+		Response(s, err)
 	}
 }
