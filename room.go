@@ -229,7 +229,7 @@ func (p *Point) ToString() string {
 
 // cast: 是否通知房间内的其他玩家
 func (room *Room) Join(s *session.Session, cast bool) (bool, string) {
-	s.Set(roomIDKey, room)
+	//s.Set(roomIDKey, room)
 	// @todo 推送房间信息
 	err := s.Push("onRoomInfo", room.getCastRoomInfo())
 	if err != nil {
@@ -798,6 +798,25 @@ func (self *RoomHandlers) Move(s *session.Session, step *Step) error {
 	// 广播
 	room.StepList = append(room.StepList, step)
 	room.CastStep(step)
+	return nil
+}
+
+// 认输
+func (self *RoomHandlers) Fail(s *session.Session, msg []byte) error {
+	if ok := CheckLogin(s); !ok {
+		return nil
+	}
+	defer self.recover(s, "认输")
+	role, _ := GetRoleById(s.UID())
+	if room, ok := RoomMgr.Rooms[role.roomId]; ok && room.Status > 10{
+		var winner int
+		if role.id == room.FPlayer{
+			winner = 2
+		}else{
+			winner = 1
+		}
+		room.Settle(winner)
+	}
 	return nil
 }
 
