@@ -18,7 +18,6 @@ func GetRoleById(id int64)  (*Role, bool) {
 	if ok {
 		return role, true
 	} else {
-		log.Panicln("通过id获取role对象失败,id:", id)
 		return nil, false
 	}
 }
@@ -35,6 +34,13 @@ func CheckLogin(s *session.Session) bool {
 	return true
 }
 
+// 返回
+func Response(s *session.Session, data interface{}){
+	if err := s.Response(data); err != nil{
+		log.Println("session response err:", err)
+	}
+}
+
 // 获取accesstoken
 
 // 获取 access_token 成功返回数据
@@ -46,24 +52,29 @@ type response struct {
 }
 
 func AccessToken(appID, secret string) (string, time.Duration, error) {
-	url, err := url.Parse("https://api.weixin.qq.com/cgi-bin/token")
+	urlP, err := url.Parse("https://api.weixin.qq.com/cgi-bin/token")
 	if err != nil {
 		return "", 0, err
 	}
 
-	query := url.Query()
+	query := urlP.Query()
 
 	query.Set("appid", appID)
 	query.Set("secret", secret)
 	query.Set("grant_type", "client_credential")
 
-	url.RawQuery = query.Encode()
+	urlP.RawQuery = query.Encode()
 
-	res, err := http.Get(url.String())
+	res, err := http.Get(urlP.String())
 	if err != nil {
 		return "", 0, err
 	}
-	defer res.Body.Close()
+	defer func() {
+		err := res.Body.Close()
+		if err != nil{
+			log.Println("====util 68 error==", err)
+		}
+	}()
 
 	if res.StatusCode != 200 {
 		return "", 0, errors.New("获取accesstoken失败")
@@ -91,25 +102,30 @@ type Code2SessionRes struct {
 }
 
 func CheckCode(code *string) (*Code2SessionRes, error) {
-	url, err := url.Parse("https://api.weixin.qq.com/sns/jscode2session")
+	urlP, err := url.Parse("https://api.weixin.qq.com/sns/jscode2session")
 	if err != nil {
 		return nil, err
 	}
 
-	query := url.Query()
+	query := urlP.Query()
 
 	query.Set("appid", APPID)
 	query.Set("secret", APPSecret)
 	query.Set("js_code", *code)
 	query.Set("grant_type", "authorization_code")
 
-	url.RawQuery = query.Encode()
+	urlP.RawQuery = query.Encode()
 
-	res, err := http.Get(url.String())
+	res, err := http.Get(urlP.String())
 	if err != nil {
 		return nil, err
 	}
-	defer res.Body.Close()
+	defer func() {
+		err := res.Body.Close()
+		if err != nil{
+			log.Println("====util 117 error==", err)
+		}
+	}()
 
 	if res.StatusCode != 200 {
 		return nil, errors.New("校验js_code失败")

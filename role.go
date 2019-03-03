@@ -70,16 +70,30 @@ func (role *Role)QuitRoom() bool{
 			}
 			room.Settle(winner)
 			room.Group.Leave(role.session)
-			room.Group.Broadcast("onRoleQuit", f)
-			return true
+			room.Cast("onRoleQuit", f)
 		}else if (room.Status == 1 && room.FPlayer == role.id) || (room.Status == 2 && room.SPlayer == role.id){
-			role.session.Push("notice", "请先取消准备")
-			return false
+			if room.FPlayer == role.id{
+				f = 1
+			}else{
+				f = 2
+			}
+			room.Group.Leave(role.session)
+			room.Cast("onRoleQuit", f)
+		}
+		// 如果房间没人了，则删除房间
+		if role.id == room.FPlayer {
+			room.FPlayer = 0
+		} else if role.id == room.SPlayer {
+			room.SPlayer = 0
+		}
+		if room.SPlayer == 0 && room.FPlayer == 0{
+			room.Cast("onRoomDestroy", room.Type)
+			delete(RoomMgr.Rooms, room.Id)
 		}
 	}
 	role.roomId = 0
 	role.status = 0
-	return false
+	return true
 }
 
 // 监测是否准备
@@ -101,7 +115,7 @@ func (role *Role)AddGold(num int) bool{
 		log.Panicln(err)
 		return false
 	}
-	role.session.Push("onGold", num)
+	role.Push("onGold", num)
 	return true
 }
 
@@ -126,11 +140,21 @@ func (role *Role)AddScore(num int){
 		log.Panicln(err)
 		return
 	}
-	role.session.Push("onScore", num)
+	role.Push("onScore", num)
 	if oldLevel != role.level{
-		role.session.Push("onLevel", role.level)
+		role.Push("onLevel", role.level)
 	}
 	return
+}
+
+// 推送消息
+func (role *Role)Push(router string, data interface{}){
+	if role.session != nil{
+		err := role.session.Push(router, data)
+		if err != nil{
+			log.Println("role push err:", err)
+		}
+	}
 }
 
 // 组装广播角色信息
@@ -170,7 +194,7 @@ func GetUserInfoByOpenid(openid string) (bool, *Role) {
 }
 
 // 添加新用户
-func AddNewUser(openid string, unionid string, userInfo *UserInfo) (*Role, error) {
+func AddNewUser(openid string, userInfo *UserInfo) (*Role, error) {
 
 	// 创建游戏账户
 	now := time.Now().Unix()

@@ -50,6 +50,12 @@ type (
 	HallMatchMessage struct {
 		Type int `json:"type"`
 	}
+
+	// 匹配取消返回消息 code 1成功 0失败
+	CancelMatchRes struct {
+		Code int `json:"code"`
+	}
+
 	// 进入好友房间
 	HallEnterFriendRoom struct {
 		// 好友id
@@ -82,16 +88,17 @@ func (stats *stats) inbound(s *session.Session, msg nano.Message) error {
 }
 
 func (stats *stats) AfterInit() {
-	stats.timer = nano.NewTimer(time.Minute, func() {
+	/*stats.timer = nano.NewTimer(time.Minute, func() {
 		println("OutboundBytes", stats.outboundBytes)
 		println("InboundBytes", stats.outboundBytes)
-	})
+	})*/
 }
 
 func NewRoomManager() *RoomManager {
 	return &RoomManager{
 		Rooms:        map[int64]*Room{},
 		MatchChannel: make(chan int64, 1000),
+		MatchCancelChannel: make(chan int64, 1000),
 		roomIDSeed:   1212,
 		Members:      map[int64]*Role{},
 	}
@@ -146,21 +153,24 @@ func (mgr *RoomManager) Login(s *session.Session, msg *LoginMessage) error {
 	}()
 	fmt.Println("logindata===:", msg)
 	//  验证code
-	codeRes, err := CheckCode(msg.Code)
-	if err != nil {
+	// #todo test
+	//codeRes, err := CheckCode(msg.Code)
+	var err error
+	if err != nil && false {
 		s.Push("notice", "登录失败")
 		fmt.Println("=====登录失败")
 		return nil
 	}
 
 	// 是否是新用户
-
-	isOlder, role := GetUserInfoByOpenid(codeRes.Openid)
+	// #todo test
+	//isOlder, role := GetUserInfoByOpenid(codeRes.Openid)
+	isOlder, role := GetUserInfoByOpenid(*msg.Code)
 	if isOlder {
 
 		//  检查断线重连
 		oldRole, isReConn := GetRoleById(role.id)
-
+		log.Println("====", isReConn)
 		if !isReConn {
 			role.session = s
 			mgr.Members[role.id] = role
@@ -196,7 +206,9 @@ func (mgr *RoomManager) Login(s *session.Session, msg *LoginMessage) error {
 		return nil
 	} else {
 		// 新用户
-		role, err := AddNewUser(codeRes.Openid, codeRes.Unionid, msg.UserInfo)
+		// #todo test
+		//role, err := AddNewUser(codeRes.Openid, codeRes.Unionid, msg.UserInfo)
+		role, err := AddNewUser(*msg.Code, msg.UserInfo)
 
 		mgr.Members[role.id] = role
 		err = s.Bind(role.id)
@@ -279,4 +291,43 @@ func (mgr *RoomManager) CancelMatch(s *session.Session, msg *HallMatchMessage) e
 		}
 	}
 	return nil
+}
+
+
+// ==================================调试接口，不开放================================
+// 获取房间数量
+func (mgr *RoomManager) RoomNum(s *session.Session, msg []byte) error {
+	return s.Response(len(RoomMgr.Rooms))
+}
+
+// 获取在线玩家数量
+func (mgr *RoomManager) RoleNum(s *session.Session, msg []byte) error {
+	return s.Response(len(RoomMgr.Members))
+}
+
+// 获取房间信息
+func (mgr *RoomManager) RoomInfo(s *session.Session, msg *struct{Id int64}) error {
+	if room, ok := RoomMgr.Rooms[msg.Id]; ok{
+		return s.Response(room)
+	}else{
+		return s.Response("fail")
+	}
+}
+
+// 获取玩家信息
+func (mgr *RoomManager) RoleInfo(s *session.Session, msg *struct{Id int64}) error {
+	fmt.Println("=====",msg.Id)
+	if role, ok := RoomMgr.Members[msg.Id]; ok{
+		res := make(map[string]interface{})
+		res["roomId"] = role.roomId
+		res["status"] = role.status
+		return s.Response(res)
+	}else{
+		return s.Response("fail")
+	}
+}
+
+//获取匹配队列
+func (mgr *RoomManager) MatchSlice(s *session.Session, msg []byte) error {
+	return s.Response(matchSlice)
 }

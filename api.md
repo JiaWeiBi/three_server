@@ -15,6 +15,7 @@
 * [准备](#5-1)
 * [退出](#5-2)
 
+## [其他](#6)
 
 <h2 id="1">1.登录</h2>
 
@@ -80,7 +81,14 @@ CastRole struct {
 
 #### 参数 同匹配请求消息，type意义不变 好友赛不存在取消匹配 
 
-#### 结果推送路径 onCancelMatch 值为1表示取消成功 0表示失败
+#### 结果推送路径 onCancleMatch 
+```
+// 匹配取消返回消息 code 1成功 0失败
+	CancelMatchRes struct {
+		Code int `json:"code"`
+	}
+```
+code值为1表示取消成功 0表示失败
 
 
 <h3 id="2-3">匹配成功，收到房间信息</h3>
@@ -155,3 +163,11 @@ CastRole struct {
 ### 请求路径 roomHandlers.Quit
 
 ### 消息结构 可为空
+
+### 消息推送 
+
+#### 路径 onRoleQuit 
+推送 1 表示一号玩家退出房间 2表示二号玩家退出
+
+#### 路径 onRoomDestroy 
+收到此推送表示房间解散，在一方玩家掉线时，超时后会发送onRoleQuit，此时客户端要根据房间类型判断是否要重新开始匹配，服务端不会主动匹配，当一方玩家主动退出房间，在普通匹配模式下回直接推送onRoomDestroy

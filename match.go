@@ -1,12 +1,13 @@
 package main
 
 import (
+	"golang.org/x/gofrontend/libgo/go/log"
 	"time"
 )
 
 // 匹配
+var matchSlice []int64
 func MatchGro(mgr *RoomManager) {
-	matchSlice := []int64{}
 	for {
 		matchTime := time.After(2 * time.Second)
 		select {
@@ -19,7 +20,7 @@ func MatchGro(mgr *RoomManager) {
 					matchSlice = append(matchSlice[:index], matchSlice[index+1:]...)
 					role, ok := GetRoleById(id)
 					if ok {
-						role.session.Push("onCancelMatch", 1)
+						role.Push("onCancleMatch", &CancelMatchRes{ 1})
 						role.status = 0
 					}
 					flag = false
@@ -29,7 +30,7 @@ func MatchGro(mgr *RoomManager) {
 			if flag {
 				role, ok := GetRoleById(id)
 				if ok {
-					role.session.Push("onCancelMatch", 0)
+					role.Push("onCancleMatch", &CancelMatchRes{ 0})
 				}
 			}
 		case <-matchTime:
@@ -52,12 +53,23 @@ func doMatch(mgr *RoomManager, ids []int64) {
 		return
 	}
 	for i := 0; i < len(ids)-1; i += 2 {
+		_, ok1 := GetRoleById(ids[i])
+		_, ok2 := GetRoleById(ids[i+1])
+		if !ok1 || !ok2{
+			if ok1{
+				ids = append(ids, ids[i])
+			}
+			if ok2{
+				ids = append(ids, ids[i+1])
+			}
+			continue
+		}
 		roomId := mgr.NewRoomId()
 		room := NewRoom(roomId)
 		room.FPlayer = ids[i]
 		room.SPlayer = ids[i+1]
 		mgr.Rooms[roomId] = room
-
+		log.Println("===匹配成功===", ids[i], ids[i+1])
 		room.Init(0)
 	}
 }
