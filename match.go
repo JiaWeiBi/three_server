@@ -1,12 +1,14 @@
 package main
 
 import (
-	"golang.org/x/gofrontend/libgo/go/log"
 	"time"
+
+	"golang.org/x/gofrontend/libgo/go/log"
 )
 
 // 匹配
 var matchSlice []int64
+
 func MatchGro(mgr *RoomManager) {
 	for {
 		matchTime := time.After(2 * time.Second)
@@ -20,7 +22,7 @@ func MatchGro(mgr *RoomManager) {
 					matchSlice = append(matchSlice[:index], matchSlice[index+1:]...)
 					role, ok := GetRoleById(id)
 					if ok {
-						role.Push("onCancleMatch", &CancelMatchRes{ 1})
+						role.Push("onCancelMatch", &CancelMatchRes{1})
 						role.status = 0
 					}
 					flag = false
@@ -30,7 +32,7 @@ func MatchGro(mgr *RoomManager) {
 			if flag {
 				role, ok := GetRoleById(id)
 				if ok {
-					role.Push("onCancleMatch", &CancelMatchRes{ 0})
+					role.Push("onCancleMatch", &CancelMatchRes{0})
 				}
 			}
 		case <-matchTime:
@@ -55,11 +57,11 @@ func doMatch(mgr *RoomManager, ids []int64) {
 	for i := 0; i < len(ids)-1; i += 2 {
 		_, ok1 := GetRoleById(ids[i])
 		_, ok2 := GetRoleById(ids[i+1])
-		if !ok1 || !ok2{
-			if ok1{
+		if !ok1 || !ok2 {
+			if ok1 {
 				ids = append(ids, ids[i])
 			}
-			if ok2{
+			if ok2 {
 				ids = append(ids, ids[i+1])
 			}
 			continue

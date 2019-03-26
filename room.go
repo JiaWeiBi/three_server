@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/lonng/nano"
 	"github.com/lonng/nano/component"
 	"github.com/lonng/nano/session"
-	"log"
-	"time"
 )
 
 const (
@@ -195,12 +196,13 @@ func NewRoom(roomId int64) *Room {
 		room.PointMap[p] = 0
 
 	}
-	room.Group = nano.NewGroup("room")
+	room.Group = nano.NewGroup(fmt.Sprintf("%d", roomId))
 	return room
 }
 
 // 房间初始化
 func (room *Room) Init(t int) {
+	room.Type = t
 	switch t {
 	case 0: //普通匹配
 		fRole, _ := GetRoleById(room.FPlayer)
@@ -229,6 +231,14 @@ func (p *Point) ToString() string {
 
 // cast: 是否通知房间内的其他玩家
 func (room *Room) Join(s *session.Session, cast bool) (bool, string) {
+	// notify others
+	if cast {
+		role, _ := GetRoleById(s.UID())
+		err := room.Group.Broadcast("onNewUser", FormatCastRole(role))
+		if err != nil {
+			log.Panicln("通知房间内其他玩家失败", err)
+		}
+	}
 	if s != nil {
 		err := s.Push("onRoomInfo", room.getCastRoomInfo())
 		if err != nil {
@@ -237,13 +247,6 @@ func (room *Room) Join(s *session.Session, cast bool) (bool, string) {
 		err = room.Group.Add(s) // add session to group
 		if err != nil {
 			return false, "加入房间分组失败"
-		}
-	}
-	// notify others
-	if cast {
-		err := room.Group.Broadcast("onNewUser", &NewUser{Content: fmt.Sprintf("New user: %d", s.ID())})
-		if err != nil {
-			log.Panicln("通知房间内其他玩家失败", err)
 		}
 	}
 
@@ -446,21 +449,30 @@ func (room *Room) Settle(winner int) *SettleMsg {
 	switch winner {
 	case 1:
 		role1, _ := GetRoleById(room.FPlayer)
-		role1.AddGold(res.WinGold)
+		//role1.AddGold(res.WinGold)
+		role1.AddGold(0)
 		role2, _ := GetRoleById(room.SPlayer)
-		role2.AddGold(res.LossGold)
+		//role2.AddGold(res.LossGold)
+		role2.AddGold(0)
 		break
 	case 2:
 		role1, _ := GetRoleById(room.SPlayer)
-		role1.AddGold(res.WinGold)
+		//role1.AddGold(res.WinGold)
+		role1.AddGold(0)
 		role2, _ := GetRoleById(room.FPlayer)
-		role2.AddGold(res.LossGold)
+		//role2.AddGold(res.LossGold)
+		role2.AddGold(0)
 		break
 	}
 	// 停止超时计时器
 	room.Timer.Stop()
 	room.Cast("onSettle", res)
 	room.ChangeStatus(0)
+	room.ChessNum = 0
+
+	for p := range room.PointMap {
+		room.PointMap[p] = 0
+	}
 	return res
 }
 
@@ -565,7 +577,7 @@ func (self *RoomHandlers) Ready(s *session.Session, msg []byte) error {
 	Response(s, "ok")
 	return nil
 }
-func (self *RoomHandlers) CancleReady(s *session.Session, msg []byte) error {
+func (self *RoomHandlers) CancelReady(s *session.Session, msg []byte) error {
 	if ok := CheckLogin(s); !ok {
 		return nil
 	}
@@ -894,11 +906,13 @@ func (self *RoomHandlers) Quit(s *session.Session, msg []byte) error {
 			if role.id == room.FPlayer {
 				role2, _ := GetRoleById(room.SPlayer)
 				role2.roomId = 0
+				role2.status = 0
 				room.Cast("onRoomDestroy", room.Type)
 				delete(RoomMgr.Rooms, room.Id)
 			} else if role.id == room.SPlayer {
 				role2, _ := GetRoleById(room.FPlayer)
 				role2.roomId = 0
+				role2.status = 0
 				room.Cast("onRoomDestroy", room.Type)
 				delete(RoomMgr.Rooms, room.Id)
 			}
@@ -906,25 +920,31 @@ func (self *RoomHandlers) Quit(s *session.Session, msg []byte) error {
 		case 1: // 好友赛
 			var f int
 			if role.id == room.FPlayer {
+
 				f = 1
 				room.FPlayer = 0
 			} else if role.id == room.SPlayer {
 				f = 2
 				room.SPlayer = 0
 			}
-			room.Cast("onRoleQuit", f)
+
 			if room.FPlayer == 0 && room.SPlayer == 0 {
 				room.Cast("onRoomDestroy", room.Type)
 				delete(RoomMgr.Rooms, room.Id)
+			} else {
+				room.Cast("onRoleQuit", f)
+				room.Group.Leave(s)
 			}
 			break
 		case 2: // 段位赛
 			break
 		}
 		role.roomId = 0
+		role.status = 0
 		Response(s, "ok")
+	} else {
+		Response(s, "fail")
 	}
-	Response(s, "fail")
 	return nil
 }
 

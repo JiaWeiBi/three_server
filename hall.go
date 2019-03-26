@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/lonng/nano"
-	"github.com/lonng/nano/component"
-	"github.com/lonng/nano/session"
 	"log"
 	"math/rand"
 	"time"
+
+	"github.com/lonng/nano"
+	"github.com/lonng/nano/component"
+	"github.com/lonng/nano/session"
 )
 
 type (
@@ -59,14 +60,14 @@ type (
 	// 进入好友房间
 	HallEnterFriendRoom struct {
 		// 好友id
-		Fid    int64 `json:"fid"`
+		Fid int64 `json:"fid"`
 		// 房间id
 		RoomId int64 `json:"roomid"`
 	}
 
 	// NewUser message will be received when new user join room
 	NewUser struct {
-		Content string `json:"content"`
+		Info *CastRole `json:"info"`
 	}
 
 	stats struct {
@@ -96,11 +97,11 @@ func (stats *stats) AfterInit() {
 
 func NewRoomManager() *RoomManager {
 	return &RoomManager{
-		Rooms:        map[int64]*Room{},
-		MatchChannel: make(chan int64, 1000),
+		Rooms:              map[int64]*Room{},
+		MatchChannel:       make(chan int64, 1000),
 		MatchCancelChannel: make(chan int64, 1000),
-		roomIDSeed:   1212,
-		Members:      map[int64]*Role{},
+		roomIDSeed:         1212,
+		Members:            map[int64]*Role{},
 	}
 }
 
@@ -195,11 +196,7 @@ func (mgr *RoomManager) Login(s *session.Session, msg *LoginMessage) error {
 		room, hasRoom := mgr.Rooms[mgr.Members[role.id].roomId]
 		if hasRoom {
 			// 推送房间信息
-			err := s.Push("onRoomInfo", room.getCastRoomInfo())
-			if err != nil {
-				log.Println("==推送房间信息失败==", err)
-				return err
-			}
+			room.Join(s, false)
 		} else {
 			mgr.Members[role.id].roomId = 0
 		}
@@ -225,8 +222,9 @@ func (mgr *RoomManager) StartMatch(s *session.Session, msg *HallMatchMessage) er
 	if ok := CheckLogin(s); !ok {
 		return nil
 	}
-	role,_ := GetRoleById(s.UID())
-	if role.status != 0{
+	role, _ := GetRoleById(s.UID())
+	if role.status != 0 {
+		log.Println("====进入匹配失败 status:", role.status)
 		return nil
 	}
 	switch msg.Type {
@@ -252,28 +250,31 @@ func (mgr *RoomManager) StartMatch(s *session.Session, msg *HallMatchMessage) er
 }
 
 // 进入好友赛
-func (mgr *RoomManager) EnterFriendRoom(s *session.Session, msg *HallEnterFriendRoom) error{
-	if room, ok := mgr.Rooms[msg.RoomId]; ok{
-		if room.FPlayer >0 && room.SPlayer >0{
+func (mgr *RoomManager) EnterFriendRoom(s *session.Session, msg *HallEnterFriendRoom) error {
+	if room, ok := mgr.Rooms[msg.RoomId]; ok {
+		if room.FPlayer != 0 && room.SPlayer != 0 {
 			s.Response("房间已满")
-		}else if room.FPlayer == msg.Fid{
+			return nil
+		} else if room.FPlayer == msg.Fid {
 			room.SPlayer = s.UID()
 			Role, _ := GetRoleById(room.SPlayer)
 
 			Role.roomId = room.Id
-
-			room.Join(s, false)
-		}else if room.SPlayer == msg.Fid{
+			Role.status = 1
+			room.Join(s, true)
+		} else if room.SPlayer == msg.Fid {
 			room.FPlayer = s.UID()
 			Role, _ := GetRoleById(room.FPlayer)
 
 			Role.roomId = room.Id
-
-			room.Join(s, false)
-		}else{
+			Role.status = 1
+			room.Join(s, true)
+		} else {
 			s.Response("房间已过期")
+			return nil
 		}
 	}
+	s.Response("ok")
 	return nil
 }
 
@@ -293,7 +294,6 @@ func (mgr *RoomManager) CancelMatch(s *session.Session, msg *HallMatchMessage) e
 	return nil
 }
 
-
 // ==================================调试接口，不开放================================
 // 获取房间数量
 func (mgr *RoomManager) RoomNum(s *session.Session, msg []byte) error {
@@ -306,23 +306,23 @@ func (mgr *RoomManager) RoleNum(s *session.Session, msg []byte) error {
 }
 
 // 获取房间信息
-func (mgr *RoomManager) RoomInfo(s *session.Session, msg *struct{Id int64}) error {
-	if room, ok := RoomMgr.Rooms[msg.Id]; ok{
+func (mgr *RoomManager) RoomInfo(s *session.Session, msg *struct{ Id int64 }) error {
+	if room, ok := RoomMgr.Rooms[msg.Id]; ok {
 		return s.Response(room)
-	}else{
+	} else {
 		return s.Response("fail")
 	}
 }
 
 // 获取玩家信息
-func (mgr *RoomManager) RoleInfo(s *session.Session, msg *struct{Id int64}) error {
-	fmt.Println("=====",msg.Id)
-	if role, ok := RoomMgr.Members[msg.Id]; ok{
+func (mgr *RoomManager) RoleInfo(s *session.Session, msg *struct{ Id int64 }) error {
+	fmt.Println("=====", msg.Id)
+	if role, ok := RoomMgr.Members[msg.Id]; ok {
 		res := make(map[string]interface{})
 		res["roomId"] = role.roomId
 		res["status"] = role.status
 		return s.Response(res)
-	}else{
+	} else {
 		return s.Response("fail")
 	}
 }

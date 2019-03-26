@@ -1,14 +1,16 @@
 package main
 
 import (
+	"log"
+	"net/http"
+
 	"github.com/lonng/nano"
 	"github.com/lonng/nano/component"
 	"github.com/lonng/nano/serialize/json"
-	"log"
-	"net/http"
 )
 
 var RoomMgr *RoomManager
+
 func main() {
 	defer func() {
 		DBExit()
@@ -21,7 +23,7 @@ func main() {
 	roomHandlers := &RoomHandlers{}
 	nano.Register(roomHandlers,
 		component.WithName("roomHandlers"),
-		)
+	)
 	// override default serializer
 	nano.SetSerializer(json.NewSerializer())
 	// Init
@@ -35,7 +37,7 @@ func main() {
 	pipeline.Outbound().PushBack(stats.outbound)
 	pipeline.Inbound().PushBack(stats.inbound)
 
-	nano.EnableDebug()
+	//nano.EnableDebug()
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	nano.SetWSPath("/three_game")
 
