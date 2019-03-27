@@ -115,6 +115,7 @@ func (mgr *RoomManager) AfterInit() {
 				log.Println(err)
 			}
 		}()
+		log.Println("session close===", s.UID())
 		role, ok := GetRoleById(s.UID())
 		if ok {
 			// 已登录 设置一分钟后清除角色数据
