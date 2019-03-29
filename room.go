@@ -241,6 +241,7 @@ func (room *Room) Join(s *session.Session, cast bool) (bool, string) {
 	}
 	if s != nil {
 		err := s.Push("onRoomInfo", room.getCastRoomInfo())
+		s.Push("notice", NoticeMessage{Content: "onRoomInfo"})
 		if err != nil {
 			return false, "推送房间信息失败"
 		}

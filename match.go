@@ -22,7 +22,7 @@ func MatchGro(mgr *RoomManager) {
 					matchSlice = append(matchSlice[:index], matchSlice[index+1:]...)
 					role, ok := GetRoleById(id)
 					if ok {
-						role.Push("onCancelMatch", &CancelMatchRes{1})
+						role.Push("onCancelMatch", &CancelMatchRes{0})
 						role.status = 0
 					}
 					flag = false

@@ -209,6 +209,7 @@ func (mgr *RoomManager) Login(s *session.Session, msg *LoginMessage) error {
 		role, err := AddNewUser(*msg.Code, msg.UserInfo)
 
 		mgr.Members[role.id] = role
+		role.session = s
 		err = s.Bind(role.id)
 		if err != nil {
 			log.Println("====session bind error:", err)
