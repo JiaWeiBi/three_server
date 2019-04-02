@@ -25,23 +25,23 @@ func init() {
 	DB.SetMaxIdleConns(4)                //设置闲置连接数
 	mysqlConn = DB
 	StmpMap = make(map[string]*sql.Stmt)
-	if StmpMap["updateGold"],err=DB.Prepare("UPDATE threeUserInfo set gold=? where id=?"); err!=nil{
+	if StmpMap["updateGold"], err = DB.Prepare("UPDATE threeUserInfo set gold=? where id=?"); err != nil {
 		log.Panicln("更新金币sql预编译失败", err)
 		panic(err)
 	}
-	if StmpMap["updateScore"],err=DB.Prepare("UPDATE threeUserInfo set score=?,level=? where id=?"); err!=nil{
+	if StmpMap["updateScore"], err = DB.Prepare("UPDATE threeUserInfo set score=?,level=? where id=?"); err != nil {
 		log.Panicln("更新积分sql预编译失败", err)
 		panic(err)
 	}
 }
 
-func DBExit(){
-	for _, stmt := range StmpMap{
-		if err := stmt.Close();err != nil{
+func DBExit() {
+	for _, stmt := range StmpMap {
+		if err := stmt.Close(); err != nil {
 			log.Println("close stmt fail==", err)
 		}
 	}
-	if err := mysqlConn.Close();err != nil{
+	if err := mysqlConn.Close(); err != nil {
 		log.Println("close mysqlConn fail==", err)
 	}
 }

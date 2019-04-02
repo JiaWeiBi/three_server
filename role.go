@@ -21,7 +21,7 @@ type (
 		roomId int64 // 所在房间ID
 		// 后端数据
 		// 状态 0:原始状态 1:匹配中
-		status int
+		status  int
 		session *session.Session
 		openid  string
 		// 清除定时器
@@ -42,39 +42,38 @@ type (
 		// 性别
 		Gender uint8 `json:"gender"`
 	}
-
 )
 
 //role
 //玩家退出处理
-func (role *Role)exit(){
+func (role *Role) exit() {
 	// 退出所在房间
-	if _, ok := RoomMgr.Rooms[role.roomId];ok {
+	if _, ok := RoomMgr.Rooms[role.roomId]; ok {
 		role.QuitRoom()
 	}
 }
 
 // 退出房间
-func (role *Role)QuitRoom() bool{
+func (role *Role) QuitRoom() bool {
 	var f int
-	if room, ok := RoomMgr.Rooms[role.roomId];ok {
-		if room.Status > 10 && (role.id == room.SPlayer || role.id == room.FPlayer){
+	if room, ok := RoomMgr.Rooms[role.roomId]; ok {
+		if room.Status > 10 && (role.id == room.SPlayer || role.id == room.FPlayer) {
 			// 结算，退出当认输处理
 			var winner int
-			if room.FPlayer == role.id{
+			if room.FPlayer == role.id {
 				winner = 2
 				f = 1
-			}else{
+			} else {
 				winner = 1
 				f = 2
 			}
 			room.Settle(winner)
 			room.Group.Leave(role.session)
 			room.Cast("onRoleQuit", f)
-		}else if (room.Status == 1 && room.FPlayer == role.id) || (room.Status == 2 && room.SPlayer == role.id){
-			if room.FPlayer == role.id{
+		} else if (room.Status == 1 && room.FPlayer == role.id) || (room.Status == 2 && room.SPlayer == role.id) {
+			if room.FPlayer == role.id {
 				f = 1
-			}else{
+			} else {
 				f = 2
 			}
 			room.Group.Leave(role.session)
@@ -86,7 +85,7 @@ func (role *Role)QuitRoom() bool{
 		} else if role.id == room.SPlayer {
 			room.SPlayer = 0
 		}
-		if room.SPlayer == 0 && room.FPlayer == 0{
+		if room.SPlayer == 0 && room.FPlayer == 0 {
 			room.Cast("onRoomDestroy", room.Type)
 			delete(RoomMgr.Rooms, room.Id)
 		}
@@ -97,9 +96,9 @@ func (role *Role)QuitRoom() bool{
 }
 
 // 监测是否准备
-func (role *Role)IsReady() bool{
-	if room, ok := RoomMgr.Rooms[role.roomId];ok {
-		if (room.Status == 1 && room.FPlayer == role.id) || (room.Status == 2 && room.SPlayer == role.id){
+func (role *Role) IsReady() bool {
+	if room, ok := RoomMgr.Rooms[role.roomId]; ok {
+		if (room.Status == 1 && room.FPlayer == role.id) || (room.Status == 2 && room.SPlayer == role.id) {
 			return true
 		}
 	}
@@ -107,11 +106,11 @@ func (role *Role)IsReady() bool{
 }
 
 // 加金币
-func (role *Role)AddGold(num int) bool{
+func (role *Role) AddGold(num int) bool {
 	role.gold = role.gold + int64(num)
-	_,err := StmpMap["updateGold"].Exec(role.gold,role.id)
-	if err != nil{
-		log.Panicln("添加金币失败,id:",role.id,",num:", num)
+	_, err := StmpMap["updateGold"].Exec(role.gold, role.id)
+	if err != nil {
+		log.Panicln("添加金币失败,id:", role.id, ",num:", num)
 		log.Panicln(err)
 		return false
 	}
@@ -120,38 +119,38 @@ func (role *Role)AddGold(num int) bool{
 }
 
 // 加积分
-func (role *Role)AddScore(num int){
+func (role *Role) AddScore(num int) {
 	oldLevel := role.level
 	role.score = role.score + num
-	if role.score <= 0{
+	if role.score <= 0 {
 		role.score = 0
 		role.level = 1
-	}else{
-		if role.score % 100 == 0{
+	} else {
+		if role.score%100 == 0 {
 			role.level = role.score / 100
-		}else{
-			role.level = role.score / 100 + 1
+		} else {
+			role.level = role.score/100 + 1
 		}
 
 	}
-	_,err := StmpMap["updateScore"].Exec(role.score,role.level,role.id)
-	if err != nil{
-		log.Panicln("添加金币失败,id:",role.id,",num:", num)
+	_, err := StmpMap["updateScore"].Exec(role.score, role.level, role.id)
+	if err != nil {
+		log.Panicln("添加金币失败,id:", role.id, ",num:", num)
 		log.Panicln(err)
 		return
 	}
 	role.Push("onScore", num)
-	if oldLevel != role.level{
+	if oldLevel != role.level {
 		role.Push("onLevel", role.level)
 	}
 	return
 }
 
 // 推送消息
-func (role *Role)Push(router string, data interface{}){
-	if role.session != nil{
+func (role *Role) Push(router string, data interface{}) {
+	if role.session != nil {
 		err := role.session.Push(router, data)
-		if err != nil{
+		if err != nil {
 			log.Println("role push err:", err)
 		}
 	}
