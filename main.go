@@ -41,5 +41,5 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	nano.SetWSPath("/three_game")
 
-	nano.ListenWS(":5000", nano.WithPipeline(pipeline))
+	nano.ListenWS(":5001", nano.WithPipeline(pipeline))
 }
