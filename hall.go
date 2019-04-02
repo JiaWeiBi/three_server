@@ -115,11 +115,10 @@ func (mgr *RoomManager) AfterInit() {
 				log.Println(err)
 			}
 		}()
-		log.Println("session close===", s.UID())
 		role, ok := GetRoleById(s.UID())
 		if ok {
-			// 已登录 设置一分钟后清除角色数据
-			role.cleanTimer = nano.NewAfterTimer(time.Minute, func() {
+			// 已登录 设置三分钟后清除角色数据
+			role.cleanTimer = nano.NewAfterTimer(3*time.Minute, func() {
 				role.exit()
 				// 删除玩家信息
 				delete(RoomMgr.Members, role.id)
@@ -251,6 +250,9 @@ func (mgr *RoomManager) StartMatch(s *session.Session, msg *HallMatchMessage) er
 
 // 进入好友赛
 func (mgr *RoomManager) EnterFriendRoom(s *session.Session, msg *HallEnterFriendRoom) error {
+	if ok := CheckLogin(s); !ok {
+		return nil
+	}
 	if room, ok := mgr.Rooms[msg.RoomId]; ok {
 		if room.FPlayer != 0 && room.SPlayer != 0 {
 			s.Response("房间已满")
@@ -262,6 +264,7 @@ func (mgr *RoomManager) EnterFriendRoom(s *session.Session, msg *HallEnterFriend
 			Role.roomId = room.Id
 			Role.status = 1
 			room.Join(s, true)
+			s.Response("ok")
 		} else if room.SPlayer == msg.Fid {
 			room.FPlayer = s.UID()
 			Role, _ := GetRoleById(room.FPlayer)
@@ -269,12 +272,12 @@ func (mgr *RoomManager) EnterFriendRoom(s *session.Session, msg *HallEnterFriend
 			Role.roomId = room.Id
 			Role.status = 1
 			room.Join(s, true)
+			s.Response("ok")
 		} else {
 			s.Response("房间已过期")
 			return nil
 		}
 	}
-	s.Response("ok")
 	return nil
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/lonng/nano"
 	"github.com/lonng/nano/component"
@@ -37,7 +38,7 @@ func main() {
 	pipeline.Outbound().PushBack(stats.outbound)
 	pipeline.Inbound().PushBack(stats.inbound)
 
-	//nano.EnableDebug()
+	nano.SetHeartbeatInterval(35 * time.Second)
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	nano.SetWSPath("/three_game")
 
