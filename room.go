@@ -898,20 +898,20 @@ func (self *RoomHandlers) Quit(s *session.Session, msg []byte) error {
 			Response(s, "fail")
 		}
 		// @todo 退出处理
+		room.Group.Leave(s)
 		switch room.Type {
 		case 0: // 普通匹配
 			if role.id == room.FPlayer {
 				role2, _ := GetRoleById(room.SPlayer)
 				role2.roomId = 0
 				role2.status = 0
-				room.Group.Leave(s)
 				room.Cast("onRoomDestroy", room.Type)
 				delete(RoomMgr.Rooms, room.Id)
 			} else if role.id == room.SPlayer {
 				role2, _ := GetRoleById(room.FPlayer)
 				role2.roomId = 0
 				role2.status = 0
-				room.Group.Leave(s)
+
 				room.Cast("onRoomDestroy", room.Type)
 				delete(RoomMgr.Rooms, room.Id)
 			}
