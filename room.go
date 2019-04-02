@@ -181,7 +181,6 @@ func init() {
 			}
 		}
 	}
-	fmt.Println(BorderPointMap)
 }
 
 func NewRoom(roomId int64) *Room {
@@ -760,7 +759,6 @@ func (self *RoomHandlers) Take(s *session.Session, p *Point) error {
 
 // 走子
 func (self *RoomHandlers) Move(s *session.Session, step *Step) error {
-	fmt.Println(step.Src, "=====", step.Dst)
 	if ok := CheckLogin(s); !ok {
 		return nil
 	}
@@ -775,7 +773,6 @@ func (self *RoomHandlers) Move(s *session.Session, step *Step) error {
 	switch room.Status {
 	case 12:
 		if !room.CheckMove(step) {
-			log.Println("====走子检验失败====")
 			return nil
 		}
 		room.PointMap[*step.Dst] = 1

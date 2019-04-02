@@ -13,7 +13,7 @@ import (
 )
 
 // 通过id获取Role
-func GetRoleById(id int64)  (*Role, bool) {
+func GetRoleById(id int64) (*Role, bool) {
 	role, ok := RoomMgr.Members[id]
 	if ok {
 		return role, true
@@ -21,10 +21,10 @@ func GetRoleById(id int64)  (*Role, bool) {
 		return nil, false
 	}
 }
+
 // 检查是否已登录
 func CheckLogin(s *session.Session) bool {
 	if s.UID() == 0 {
-		fmt.Println("=====未登录====")
 		err := s.Push("notice", NoticeMessage{Content: "请先登录"})
 		if err != nil {
 			log.Println("提示失败==", err)
@@ -35,8 +35,8 @@ func CheckLogin(s *session.Session) bool {
 }
 
 // 返回
-func Response(s *session.Session, data interface{}){
-	if err := s.Response(data); err != nil{
+func Response(s *session.Session, data interface{}) {
+	if err := s.Response(data); err != nil {
 		log.Println("session response err:", err)
 	}
 }
@@ -71,7 +71,7 @@ func AccessToken(appID, secret string) (string, time.Duration, error) {
 	}
 	defer func() {
 		err := res.Body.Close()
-		if err != nil{
+		if err != nil {
 			log.Println("====util 68 error==", err)
 		}
 	}()
@@ -122,7 +122,7 @@ func CheckCode(code *string) (*Code2SessionRes, error) {
 	}
 	defer func() {
 		err := res.Body.Close()
-		if err != nil{
+		if err != nil {
 			log.Println("====util 117 error==", err)
 		}
 	}()

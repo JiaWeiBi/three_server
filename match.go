@@ -36,7 +36,6 @@ func MatchGro(mgr *RoomManager) {
 				}
 			}
 		case <-matchTime:
-			//	fmt.Println("====matchTime")
 			doMatch(mgr, matchSlice)
 			if len(matchSlice)%2 == 0 {
 				matchSlice = []int64{}
@@ -71,7 +70,6 @@ func doMatch(mgr *RoomManager, ids []int64) {
 		room.FPlayer = ids[i]
 		room.SPlayer = ids[i+1]
 		mgr.Rooms[roomId] = room
-		log.Println("===匹配成功===", ids[i], ids[i+1])
 		room.Init(0)
 	}
 }

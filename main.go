@@ -41,8 +41,5 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	nano.SetWSPath("/three_game")
 
-	http.Handle("/web/", http.StripPrefix("/web/", http.FileServer(http.Dir("web"))))
-
-	//nano.SetCheckOriginFunc(func(_ *http.Request) bool { return true })
 	nano.ListenWS(":5000", nano.WithPipeline(pipeline))
 }

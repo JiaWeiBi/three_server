@@ -153,14 +153,12 @@ func (mgr *RoomManager) Login(s *session.Session, msg *LoginMessage) error {
 			log.Println(err)
 		}
 	}()
-	fmt.Println("logindata===:", msg)
 	//  验证code
 	// #todo test
 	//codeRes, err := CheckCode(msg.Code)
 	var err error
 	if err != nil && false {
 		s.Push("notice", "登录失败")
-		fmt.Println("=====登录失败")
 		return nil
 	}
 
@@ -318,7 +316,6 @@ func (mgr *RoomManager) RoomInfo(s *session.Session, msg *struct{ Id int64 }) er
 
 // 获取玩家信息
 func (mgr *RoomManager) RoleInfo(s *session.Session, msg *struct{ Id int64 }) error {
-	fmt.Println("=====", msg.Id)
 	if role, ok := RoomMgr.Members[msg.Id]; ok {
 		res := make(map[string]interface{})
 		res["roomId"] = role.roomId
