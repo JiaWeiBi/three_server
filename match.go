@@ -2,8 +2,6 @@ package main
 
 import (
 	"time"
-
-	"golang.org/x/gofrontend/libgo/go/log"
 )
 
 // 匹配
