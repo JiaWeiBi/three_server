@@ -84,18 +84,15 @@ func (role *Role) QuitRoom() bool {
 			//room.Cast("onRoleQuit", f)
 		}
 		// 普通匹配或则房间没人了，则删除房间
-		if role.id == room.FPlayer {
-			room.FPlayer = 0
-		} else if role.id == room.SPlayer {
-			room.SPlayer = 0
-		}
-		if (room.Type == 0 || room.Type == 2)|| (room.SPlayer == 0 && room.FPlayer == 0) {
+		if room.Type == 0 || room.Type == 2 {
 			// 清除另一个玩家的房间信息
 			if role.id == room.FPlayer {
+				room.FPlayer = 0
 				role2, _ := GetRoleById(room.SPlayer)
 				role2.roomId = 0
 				role2.status = 0
 			} else if role.id == room.SPlayer {
+				room.SPlayer = 0
 				role2, _ := GetRoleById(room.FPlayer)
 				role2.roomId = 0
 				role2.status = 0
@@ -103,7 +100,17 @@ func (role *Role) QuitRoom() bool {
 			room.Cast("onRoomDestroy", room.Type)
 			delete(RoomMgr.Rooms, room.Id)
 		}else{
-			room.Cast("onRoleQuit", f)
+			if role.id == room.FPlayer {
+				room.FPlayer = 0
+			} else if role.id == room.SPlayer {
+				room.SPlayer = 0
+			}
+			if room.SPlayer == 0 && room.FPlayer == 0 {
+				room.Cast("onRoomDestroy", room.Type)
+				delete(RoomMgr.Rooms, room.Id)
+			}else{
+				room.Cast("onRoleQuit", f)
+			}
 		}
 	}
 	role.roomId = 0
