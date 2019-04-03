@@ -116,9 +116,8 @@ func (mgr *RoomManager) AfterInit() {
 		}()
 		role, ok := GetRoleById(s.UID())
 		if ok {
-			// 已登录 设置三分钟后清除角色数据1*time.Minute
-			log.Println("5miao钟后清除玩家数据==", role.id)
-			role.cleanTimer = nano.NewAfterTimer(5*time.Second, func() {
+			// 已登录 设置三分钟后清除角色数据
+			role.cleanTimer = nano.NewAfterTimer(3*time.Minute, func() {
 				role.exit()
 				// 删除玩家信息
 				delete(RoomMgr.Members, role.id)
