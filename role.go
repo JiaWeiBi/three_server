@@ -68,26 +68,42 @@ func (role *Role) QuitRoom() bool {
 				f = 2
 			}
 			room.Settle(winner)
-			room.Group.Leave(role.session)
-			room.Cast("onRoleQuit", f)
-		} else if (room.Status == 1 && room.FPlayer == role.id) || (room.Status == 2 && room.SPlayer == role.id) {
+			if role.session != nil{
+				room.Group.Leave(role.session)
+			}
+			//room.Cast("onRoleQuit", f)
+		} else if (room.FPlayer == role.id) || (room.SPlayer == role.id) {
 			if room.FPlayer == role.id {
 				f = 1
 			} else {
 				f = 2
 			}
-			room.Group.Leave(role.session)
-			room.Cast("onRoleQuit", f)
+			if role.session != nil{
+				room.Group.Leave(role.session)
+			}
+			//room.Cast("onRoleQuit", f)
 		}
-		// 如果房间没人了，则删除房间
+		// 普通匹配或则房间没人了，则删除房间
 		if role.id == room.FPlayer {
 			room.FPlayer = 0
 		} else if role.id == room.SPlayer {
 			room.SPlayer = 0
 		}
-		if room.SPlayer == 0 && room.FPlayer == 0 {
+		if (room.Type == 0 || room.Type == 2)|| (room.SPlayer == 0 && room.FPlayer == 0) {
+			// 清除另一个玩家的房间信息
+			if role.id == room.FPlayer {
+				role2, _ := GetRoleById(room.SPlayer)
+				role2.roomId = 0
+				role2.status = 0
+			} else if role.id == room.SPlayer {
+				role2, _ := GetRoleById(room.FPlayer)
+				role2.roomId = 0
+				role2.status = 0
+			}
 			room.Cast("onRoomDestroy", room.Type)
 			delete(RoomMgr.Rooms, room.Id)
+		}else{
+			room.Cast("onRoleQuit", f)
 		}
 	}
 	role.roomId = 0
