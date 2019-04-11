@@ -153,8 +153,7 @@ func (mgr *RoomManager) Login(s *session.Session, msg *LoginMessage) error {
 	}()
 	//  验证code
 	// #todo test
-	//codeRes, err := CheckCode(msg.Code)
-	var err error
+	codeRes, err := CheckCode(msg.Code)
 	if err != nil && false {
 		s.Push("notice", "登录失败")
 		return nil
@@ -162,8 +161,8 @@ func (mgr *RoomManager) Login(s *session.Session, msg *LoginMessage) error {
 
 	// 是否是新用户
 	// #todo test
-	//isOlder, role := GetUserInfoByOpenid(codeRes.Openid)
-	isOlder, role := GetUserInfoByOpenid(*msg.Code)
+	isOlder, role := GetUserInfoByOpenid(codeRes.Openid)
+	//isOlder, role := GetUserInfoByOpenid(*msg.Code)
 	if isOlder {
 
 		//  检查断线重连
@@ -201,8 +200,8 @@ func (mgr *RoomManager) Login(s *session.Session, msg *LoginMessage) error {
 	} else {
 		// 新用户
 		// #todo test
-		//role, err := AddNewUser(codeRes.Openid, codeRes.Unionid, msg.UserInfo)
-		role, err := AddNewUser(*msg.Code, msg.UserInfo)
+		role, err := AddNewUser(codeRes.Openid, msg.UserInfo)
+		//role, err := AddNewUser(*msg.Code, msg.UserInfo)
 
 		mgr.Members[role.id] = role
 		role.session = s
